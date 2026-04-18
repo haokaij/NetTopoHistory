@@ -9,14 +9,6 @@ import cytoscape from 'cytoscape';
 import { useTopologyStore } from '@/store/topologyStore';
 import type { NetworkNode, TopologyEdge, NodeStatus } from '@/types';
 
-// 动态导入 fcose 布局
-if (typeof window !== 'undefined') {
-  import('cytoscape-fcose').then((module) => {
-    // @ts-expect-error - Cytoscape 扩展 API 类型不兼容
-    cytoscape.use(module.default);
-  });
-}
-
 // 节点状态颜色映射
 const STATUS_COLORS: Record<NodeStatus, string> = {
   online: '#22c55e',
@@ -184,113 +176,120 @@ export default function TopologyCanvas({
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
 
-    const cy = cytoscape({
-      container: containerRef.current,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      style: CY_STYLESHEET as any,
-      minZoom: 0.2,
-      maxZoom: 3,
-      wheelSensitivity: 0.3,
-      boxSelectionEnabled: true
-    });
+    // 先导入并注册 fcose 布局
+    import('cytoscape-fcose').then((module) => {
+      // @ts-expect-error - Cytoscape 扩展 API 类型不兼容
+      cytoscape.use(module.default);
 
-    cyRef.current = cy;
+      const cy = cytoscape({
+        container: containerRef.current,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        style: CY_STYLESHEET as any,
+        minZoom: 0.2,
+        maxZoom: 3,
+        wheelSensitivity: 0.3,
+        boxSelectionEnabled: true
+      });
 
-    // 布局配置
-    const layoutOptions = {
-      name: 'fcose',
-      randomize: true,
-      fit: true,
-      padding: 50,
-      nodeDimensionsIncludeLabels: true,
-      uniformNodeDimensions: false,
-      packComponents: true,
-      nodeRepulsion: () => 4500,
-      idealEdgeLength: () => 100,
-      edgeElasticity: () => 0.45,
-      nestingFactor: 0.1,
-      gravity: 0.25,
-      gravityRange: 3.8,
-      gravityCompound: 1.0,
-      gravityRangeCompound: 1.5,
-      numIter: 2500,
-      initialEnergyOnIncremental: 0.5
-    };
+      cyRef.current = cy;
 
-    // 设置初始布局
-    cy.layout(layoutOptions).run();
+      // 布局配置
+      const layoutOptions = {
+        name: 'fcose',
+        randomize: true,
+        fit: true,
+        padding: 50,
+        nodeDimensionsIncludeLabels: true,
+        uniformNodeDimensions: false,
+        packComponents: true,
+        nodeRepulsion: () => 4500,
+        idealEdgeLength: () => 100,
+        edgeElasticity: () => 0.45,
+        nestingFactor: 0.1,
+        gravity: 0.25,
+        gravityRange: 3.8,
+        gravityCompound: 1.0,
+        gravityRangeCompound: 1.5,
+        numIter: 2500,
+        initialEnergyOnIncremental: 0.5
+      };
 
-    // 节点点击事件
-    cy.on('tap', 'node', (evt: { target: { id: () => string } }) => {
-      const nodeId = evt.target.id();
-      setSelectedNode(nodeId);
-      const nodeData = nodes.find((n: NetworkNode) => n.id === nodeId);
-      onNodeSelect?.(nodeData || null);
-    });
+      // 设置初始布局
+      cy.layout(layoutOptions).run();
 
-    // 空白区域点击
-    cy.on('tap', (evt: { target: unknown }) => {
-      if (evt.target === cy) {
-        setSelectedNode(null);
-        onNodeSelect?.(null);
-      }
-    });
+      // 节点点击事件
+      cy.on('tap', 'node', (evt: { target: { id: () => string } }) => {
+        const nodeId = evt.target.id();
+        setSelectedNode(nodeId);
+        const nodeData = nodes.find((n: NetworkNode) => n.id === nodeId);
+        onNodeSelect?.(nodeData || null);
+      });
 
-    // 边点击事件
-    cy.on('tap', 'edge', (evt: { target: { id: () => string } }) => {
-      const edgeId = evt.target.id();
-      const edgeData = edges.find((e: TopologyEdge) => e.id === edgeId);
-      onEdgeSelect?.(edgeData || null);
-    });
-
-    // 节点拖拽结束 - 保存位置
-    cy.on('dragfree', 'node', (evt: { target: { id: () => string; position: () => { x: number; y: number } } }) => {
-      const target = evt.target;
-      const id = target.id();
-      const position = target.position();
-      updateNodePosition(id, position.x, position.y);
-    });
-
-    // 右键菜单
-    cy.on('cxttap', 'node', (evt: { target: { id: () => string; renderedPosition: () => { x: number; y: number } } }) => {
-      const nodeId = evt.target.id();
-      const nodeData = nodes.find((n: NetworkNode) => n.id === nodeId);
-      if (nodeData) {
-        const renderedPosition = evt.target.renderedPosition();
-        onNodeRightClick?.(nodeData, { x: renderedPosition.x, y: renderedPosition.y });
-      }
-    });
-
-    // 空白区域右键
-    cy.on('cxttap', () => {
-      const pos = cy.container()?.getBoundingClientRect();
-      if (pos) {
-        onNodeRightClick?.(null, { x: pos.width / 2, y: pos.height / 2 });
-      }
-    });
-
-    // 键盘事件
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const selected = cy.elements(':selected');
-        if (selected.length > 0) {
-          selected.forEach((ele: { isNode: () => boolean; isEdge: () => boolean; id: () => string }) => {
-            if (ele.isNode()) {
-              removeNode(ele.id());
-            } else if (ele.isEdge()) {
-              removeEdge(ele.id());
-            }
-          });
+      // 空白区域点击
+      cy.on('tap', (evt: { target: unknown }) => {
+        if (evt.target === cy) {
+          setSelectedNode(null);
+          onNodeSelect?.(null);
         }
-      }
-    };
+      });
 
-    window.addEventListener('keydown', handleKeyDown);
+      // 边点击事件
+      cy.on('tap', 'edge', (evt: { target: { id: () => string } }) => {
+        const edgeId = evt.target.id();
+        const edgeData = edges.find((e: TopologyEdge) => e.id === edgeId);
+        onEdgeSelect?.(edgeData || null);
+      });
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      cy.destroy();
-    };
+      // 节点拖拽结束 - 保存位置
+      cy.on('dragfree', 'node', (evt: { target: { id: () => string; position: () => { x: number; y: number } } }) => {
+        const target = evt.target;
+        const id = target.id();
+        const position = target.position();
+        updateNodePosition(id, position.x, position.y);
+      });
+
+      // 右键菜单
+      cy.on('cxttap', 'node', (evt: { target: { id: () => string; renderedPosition: () => { x: number; y: number } } }) => {
+        const nodeId = evt.target.id();
+        const nodeData = nodes.find((n: NetworkNode) => n.id === nodeId);
+        if (nodeData) {
+          const renderedPosition = evt.target.renderedPosition();
+          onNodeRightClick?.(nodeData, { x: renderedPosition.x, y: renderedPosition.y });
+        }
+      });
+
+      // 空白区域右键
+      cy.on('cxttap', () => {
+        const pos = cy.container()?.getBoundingClientRect();
+        if (pos) {
+          onNodeRightClick?.(null, { x: pos.width / 2, y: pos.height / 2 });
+        }
+      });
+
+      // 键盘事件
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          const selected = cy.elements(':selected');
+          if (selected.length > 0) {
+            selected.forEach((ele: { isNode: () => boolean; isEdge: () => boolean; id: () => string }) => {
+              if (ele.isNode()) {
+                removeNode(ele.id());
+              } else if (ele.isEdge()) {
+                removeEdge(ele.id());
+              }
+            });
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      // 清理函数
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        cy.destroy();
+      };
+    });
   }, []);
 
   // 更新节点和边数据
