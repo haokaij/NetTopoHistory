@@ -85,7 +85,6 @@ const CY_STYLESHEET = [
       opacity: 0.3
     }
   },
-  },
   {
     selector: 'node[status = "high-latency"]',
     style: {
