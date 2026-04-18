@@ -102,9 +102,22 @@ export function usePingPolling(options: UsePingPollingOptions = {}) {
         cidr ||
         `${networkInfo.localIp.split('.').slice(0, 3).join('.')}.0/24`;
 
+      // 从 CIDR 生成 IP 列表
+      const baseIp = scanCidr.split('.').slice(0, 3).join('.');
+      const ips: string[] = [];
+      for (let i = 1; i <= 254; i++) {
+        ips.push(`${baseIp}.${i}`);
+      }
+
       setIsScanning(true);
 
-      const response = await fetch(`/api/ping?cidr=${encodeURIComponent(scanCidr)}`);
+      // 使用 POST 请求发送 IP 列表
+      const response = await fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ips })
+      });
+
       if (!response.ok) {
         throw new Error('Ping scan failed');
       }
@@ -114,7 +127,7 @@ export function usePingPolling(options: UsePingPollingOptions = {}) {
       return {
         networkInfo,
         scanResults: data.results,
-        onlineCount: data.online
+        onlineCount: data.results?.filter((r: PingResultItem) => r.online).length || 0
       };
     } catch (error) {
       console.error('Network scan error:', error);
