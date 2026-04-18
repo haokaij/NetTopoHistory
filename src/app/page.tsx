@@ -53,6 +53,7 @@ export default function HomePage() {
     error,
     initialize,
     addNode,
+    addEdge,
     setGateway,
     loadTopology,
     takeSnapshot,
@@ -185,7 +186,6 @@ export default function HomePage() {
 
       // 如果有网关，自动连线
       if (gateway) {
-        const { addEdge } = useTopologyStore.getState();
         addEdge({
           source: gateway.id,
           target: newNode.id,
@@ -193,7 +193,19 @@ export default function HomePage() {
         });
       }
     },
-    [addNode, gateway]
+    [addNode, gateway, addEdge]
+  );
+
+  // 处理添加连线
+  const handleAddEdge = useCallback(
+    (sourceId: string, targetId: string) => {
+      addEdge({
+        source: sourceId,
+        target: targetId,
+        directed: false
+      });
+    },
+    [addEdge]
   );
 
   // 清空拓扑
@@ -345,6 +357,7 @@ export default function HomePage() {
         <div className="flex-1 flex flex-col p-4 gap-2">
           <TopologyToolbar
             onAddNode={handleAddNode}
+            onAddEdge={handleAddEdge}
             onScanNetwork={handleScanNetwork}
             onClearTopology={handleClearTopology}
             onResetLayout={handleResetLayout}

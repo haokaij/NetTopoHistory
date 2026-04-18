@@ -33,12 +33,20 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useTopologyStore } from '@/store/topologyStore';
 import type { NetworkNode } from '@/types';
 
 interface TopologyToolbarProps {
   onAddNode?: (ip: string, hostname?: string, description?: string) => void;
+  onAddEdge?: (source: string, target: string) => void;
   onScanNetwork?: () => void;
   onClearTopology?: () => void;
   onResetLayout?: () => void;
@@ -48,6 +56,7 @@ interface TopologyToolbarProps {
 
 export default function TopologyToolbar({
   onAddNode,
+  onAddEdge,
   onScanNetwork,
   onClearTopology,
   onResetLayout,
@@ -61,6 +70,11 @@ export default function TopologyToolbar({
   const [newNodeIp, setNewNodeIp] = useState('');
   const [newNodeHostname, setNewNodeHostname] = useState('');
   const [newNodeDesc, setNewNodeDesc] = useState('');
+
+  // 添加连线对话框状态
+  const [isAddEdgeDialogOpen, setIsAddEdgeDialogOpen] = useState(false);
+  const [edgeSource, setEdgeSource] = useState('');
+  const [edgeTarget, setEdgeTarget] = useState('');
 
   // 处理添加节点
   const handleAddNode = () => {
@@ -78,6 +92,19 @@ export default function TopologyToolbar({
     setNewNodeHostname('');
     setNewNodeDesc('');
     setIsAddDialogOpen(false);
+  };
+
+  // 处理添加连线
+  const handleAddEdge = () => {
+    if (!edgeSource || !edgeTarget) return;
+    if (edgeSource === edgeTarget) {
+      alert('起点和终点不能相同');
+      return;
+    }
+    onAddEdge?.(edgeSource, edgeTarget);
+    setEdgeSource('');
+    setEdgeTarget('');
+    setIsAddEdgeDialogOpen(false);
   };
 
   // 获取设备图标
@@ -176,6 +203,83 @@ export default function TopologyToolbar({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 添加连线 */}
+        <Dialog open={isAddEdgeDialogOpen} onOpenChange={setIsAddEdgeDialogOpen}>
+          <DialogTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={nodes.length < 2}
+                  className="text-slate-300 hover:text-white hover:bg-slate-700"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>添加连线</p>
+              </TooltipContent>
+            </Tooltip>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>添加设备连线</DialogTitle>
+              <DialogDescription>连接两个网络设备</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="source" className="text-right">
+                  起点设备
+                </Label>
+                <select
+                  id="source"
+                  value={edgeSource}
+                  onChange={(e) => setEdgeSource(e.target.value)}
+                  className="col-span-3 flex h-10 w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200"
+                >
+                  <option value="">选择设备...</option>
+                  {nodes.map((node: NetworkNode) => (
+                    <option key={node.id} value={node.id}>
+                      {node.hostname || node.ip}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="target" className="text-right">
+                  终点设备
+                </Label>
+                <select
+                  id="target"
+                  value={edgeTarget}
+                  onChange={(e) => setEdgeTarget(e.target.value)}
+                  className="col-span-3 flex h-10 w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200"
+                >
+                  <option value="">选择设备...</option>
+                  {nodes.map((node: NetworkNode) => (
+                    <option key={node.id} value={node.id}>
+                      {node.hostname || node.ip}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddEdgeDialogOpen(false)}>
+                取消
+              </Button>
+              <Button onClick={handleAddEdge} disabled={!edgeSource || !edgeTarget}>
+                添加连线
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="w-px h-6 bg-slate-600" />
 
         {/* 清空拓扑 */}
         <Tooltip>
