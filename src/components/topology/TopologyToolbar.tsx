@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -51,6 +52,7 @@ interface TopologyToolbarProps {
   onClearTopology?: () => void;
   onResetLayout?: () => void;
   onTakeSnapshot?: () => void;
+  onSearchNode?: (keyword: string) => void;
   isScanning?: boolean;
 }
 
@@ -61,6 +63,7 @@ export default function TopologyToolbar({
   onClearTopology,
   onResetLayout,
   onTakeSnapshot,
+  onSearchNode,
   isScanning = false
 }: TopologyToolbarProps) {
   const { nodes, edges, gateway } = useTopologyStore();
@@ -75,6 +78,15 @@ export default function TopologyToolbar({
   const [isAddEdgeDialogOpen, setIsAddEdgeDialogOpen] = useState(false);
   const [edgeSource, setEdgeSource] = useState('');
   const [edgeTarget, setEdgeTarget] = useState('');
+
+  // 搜索状态
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  // 处理搜索
+  const handleSearch = (value: string) => {
+    setSearchKeyword(value);
+    onSearchNode?.(value);
+  };
 
   // 处理添加节点
   const handleAddNode = () => {
@@ -140,6 +152,28 @@ export default function TopologyToolbar({
         </Tooltip>
 
         <div className="w-px h-6 bg-slate-600" />
+
+        {/* 搜索设备 */}
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
+          <Input
+            type="text"
+            placeholder="搜索设备..."
+            value={searchKeyword}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="h-8 w-[180px] pl-7 text-xs bg-slate-700/50 border-slate-600 focus:border-blue-500"
+          />
+          {searchKeyword && (
+            <button
+              onClick={() => handleSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1" />
 
         {/* 添加节点 */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

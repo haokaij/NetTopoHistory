@@ -208,6 +208,16 @@ export default function HomePage() {
     [addEdge]
   );
 
+  // 处理搜索设备
+  const handleSearchNode = useCallback(
+    (keyword: string) => {
+      // 通过 store 设置搜索关键词
+      const { setSearchKeyword } = useTopologyStore.getState();
+      setSearchKeyword(keyword);
+    },
+    []
+  );
+
   // 清空拓扑
   const handleClearTopology = useCallback(() => {
     if (confirm('确定要清空所有拓扑数据吗？此操作不可恢复。')) {
@@ -362,6 +372,7 @@ export default function HomePage() {
             onClearTopology={handleClearTopology}
             onResetLayout={handleResetLayout}
             onTakeSnapshot={handleTakeSnapshot}
+            onSearchNode={handleSearchNode}
             isScanning={isScanning}
           />
 

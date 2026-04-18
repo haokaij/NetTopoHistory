@@ -46,6 +46,7 @@ interface TopologyState {
 
   // UI 状态
   selectedNodeId: string | null;
+  searchKeyword: string;
   isLoading: boolean;
   error: string | null;
 
@@ -112,6 +113,7 @@ export const useTopologyStore = create<TopologyStore>((set, get) => ({
   gateway: null,
   localIp: '',
   selectedNodeId: null,
+  searchKeyword: '',
   isLoading: false,
   error: null,
   changeRecords: [],
@@ -229,6 +231,7 @@ export const useTopologyStore = create<TopologyStore>((set, get) => ({
   setSelectedNode: (id: string | null) => set({ selectedNodeId: id }),
   setLocalIp: (ip: string) => set({ localIp: ip }),
   setGateway: (node: NetworkNode | null) => set({ gateway: node }),
+  setSearchKeyword: (keyword: string) => set({ searchKeyword: keyword }),
 
   updateNodePosition: (id: string, x: number, y: number) => {
     set((state) => ({

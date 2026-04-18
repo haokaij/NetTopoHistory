@@ -69,6 +69,23 @@ const CY_STYLESHEET = [
       opacity: 0.7
     }
   },
+  // 搜索匹配节点高亮
+  {
+    selector: 'node.search-match',
+    style: {
+      'border-width': 4,
+      'border-color': '#3b82f6',
+      'background-opacity': 1
+    }
+  },
+  // 搜索非匹配节点变暗
+  {
+    selector: 'node.search-dim',
+    style: {
+      opacity: 0.3
+    }
+  },
+  },
   {
     selector: 'node[status = "high-latency"]',
     style: {
@@ -139,6 +156,7 @@ export default function TopologyCanvas({
   const {
     nodes,
     edges,
+    searchKeyword,
     setSelectedNode,
     updateNodePosition,
     removeNode,
@@ -389,6 +407,41 @@ export default function TopologyCanvas({
       }
     });
   }, [nodes]);
+
+  // 搜索高亮
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    const keyword = searchKeyword.toLowerCase().trim();
+
+    if (!keyword) {
+      // 清除搜索高亮
+      cy.nodes().removeClass('search-match search-dim');
+      return;
+    }
+
+    // 遍历所有节点进行匹配
+    cy.nodes().forEach((cyNode) => {
+      const data = cyNode.data();
+      const ip = (data.ip || '').toLowerCase();
+      const hostname = (data.hostname || '').toLowerCase();
+      const description = (data.description || '').toLowerCase();
+
+      const isMatch =
+        ip.includes(keyword) ||
+        hostname.includes(keyword) ||
+        description.includes(keyword);
+
+      if (isMatch) {
+        cyNode.removeClass('search-dim');
+        cyNode.addClass('search-match');
+      } else {
+        cyNode.removeClass('search-match');
+        cyNode.addClass('search-dim');
+      }
+    });
+  }, [searchKeyword]);
 
   return (
     <div
