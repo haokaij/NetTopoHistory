@@ -1,65 +1,298 @@
-# 项目上下文
+# NetTopoHistory - 网络拓扑工具开发规范
 
-### 版本技术栈
+## 1. 项目概述
 
-- **Framework**: Next.js 16 (App Router)
-- **Core**: React 19
-- **Language**: TypeScript 5
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **Styling**: Tailwind CSS 4
+**NetTopoHistory** 是一个带变更追踪与定时快照的可编辑动态网络拓扑工具，支持：
+- 网络设备自动发现（Ping 扫描）
+- Cytoscape.js 拓扑图展示
+- 手动编辑拓扑（增删节点/连线）
+- SSH 配置上传
+- 历史变更追踪与对比
+- 每小时自动快照
 
-## 目录结构
+## 2. 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端框架 | Next.js 16 (App Router) + React 19 + TypeScript 5 |
+| 拓扑图库 | Cytoscape.js 3.33+ |
+| 状态管理 | Zustand |
+| 持久化存储 | Dexie.js (IndexedDB) |
+| Diff 算法 | jsondiffpatch |
+| 后端 Ping | Node.js child_process (系统 ping) |
+| SSH 执行 | ssh2 库 |
+| UI 组件 | shadcn/ui + Tailwind CSS 4 |
+
+## 3. 目录结构
 
 ```
-├── public/                 # 静态资源
-├── scripts/                # 构建与启动脚本
-│   ├── build.sh            # 构建脚本
-│   ├── dev.sh              # 开发环境启动脚本
-│   ├── prepare.sh          # 预处理脚本
-│   └── start.sh            # 生产环境启动脚本
-├── src/
-│   ├── app/                # 页面路由与布局
-│   ├── components/ui/      # Shadcn UI 组件库
-│   ├── hooks/              # 自定义 Hooks
-│   ├── lib/                # 工具库
-│   │   └── utils.ts        # 通用工具函数 (cn)
-│   └── server.ts           # 自定义服务端入口
-├── next.config.ts          # Next.js 配置
-├── package.json            # 项目依赖管理
-└── tsconfig.json           # TypeScript 配置
+src/
+├── app/                          # Next.js App Router
+│   ├── api/                      # API 路由
+│   │   ├── network-info/         # 获取本机网络信息
+│   │   ├── ping/                # Ping 扫描接口
+│   │   └── ssh/                 # SSH 执行接口
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx                  # 主页面
+├── components/
+│   ├── topology/                 # 拓扑图相关组件
+│   │   ├── TopologyCanvas.tsx   # Cytoscape 画布
+│   │   ├── TopologyToolbar.tsx  # 工具栏
+│   │   ├── NodeDetail.tsx       # 节点详情面板
+│   │   └── NodeContextMenu.tsx  # 右键菜单
+│   ├── history/                 # 历史记录组件
+│   │   ├── HistoryPanel.tsx     # 历史面板
+│   │   ├── HistoryTimeline.tsx  # 时间轴
+│   │   └── DiffViewer.tsx       # 差异对比
+│   ├── upload/                  # 配置上传组件
+│   │   └── SshUploadDialog.tsx  # SSH 上传对话框
+│   └── layout/                  # 布局组件
+│       └── AppShell.tsx
+├── db/                          # 数据库层
+│   └── indexedDB.ts             # Dexie.js 数据库定义
+├── hooks/                       # 自定义 Hooks
+│   ├── useTopology.ts           # 拓扑状态管理
+│   ├── usePingPolling.ts        # Ping 轮询
+│   └── useSnapshot.ts           # 定时快照
+├── lib/                         # 工具库
+│   └── utils.ts
+├── store/                       # Zustand Store
+│   └── topologyStore.ts         # 拓扑状态
+├── types/                       # 类型定义
+│   └── index.ts
+└── server.ts                    # 自定义服务端入口
 ```
 
-- 项目文件（如 app 目录、pages 目录、components 等）默认初始化到 `src/` 目录下。
+## 4. 类型定义 (src/types/index.ts)
 
-## 包管理规范
+```typescript
+// 节点状态
+type NodeStatus = 'online' | 'offline' | 'high-latency';
 
-**仅允许使用 pnpm** 作为包管理器，**严禁使用 npm 或 yarn**。
-**常用命令**：
-- 安装依赖：`pnpm add <package>`
-- 安装开发依赖：`pnpm add -D <package>`
-- 安装所有依赖：`pnpm install`
-- 移除依赖：`pnpm remove <package>`
+// 网络设备节点
+interface NetworkNode {
+  id: string;
+  ip: string;
+  hostname: string;
+  description?: string;
+  status: NodeStatus;
+  latency: number;              // ms
+  lastSeen: string;             // ISO 时间戳
+  position?: { x: number; y: number }; // 用户手动位置
+  isGateway: boolean;
+  isManuallyAdded: boolean;
+  pingHistory: number[];       // 最近 5 次延迟
+}
 
-## 开发规范
+// 拓扑连线
+interface TopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+  directed: boolean;
+  label?: string;
+}
 
-### 编码规范
+// 完整拓扑结构
+interface Topology {
+  nodes: NetworkNode[];
+  edges: TopologyEdge[];
+  lastUpdated: string;
+  version: number;
+}
 
-- 默认按 TypeScript `strict` 心智写代码；优先复用当前作用域已声明的变量、函数、类型和导入，禁止引用未声明标识符或拼错变量名。
-- 禁止隐式 `any` 和 `as any`；函数参数、返回值、解构项、事件对象、`catch` 错误在使用前应有明确类型或先完成类型收窄，并清理未使用的变量和导入。
+// 变更记录类型
+type ChangeType =
+  | 'node_add'
+  | 'node_remove'
+  | 'node_update'
+  | 'edge_add'
+  | 'edge_remove'
+  | 'layout_change'
+  | 'import'
+  | 'rollback'
+  | 'snapshot';
 
-### next.config 配置规范
+// 变更记录
+interface ChangeRecord {
+  id: string;
+  timestamp: string;
+  type: ChangeType;
+  description: string;
+  before?: Topology;
+  after?: Topology;
+  diff?: object;
+  operator: string;
+  note?: string;
+}
 
-- 配置的路径不要写死绝对路径，必须使用 path.resolve(__dirname, ...)、import.meta.dirname 或 process.cwd() 动态拼接。
+// 快照记录
+interface Snapshot {
+  id: string;
+  timestamp: string;
+  type: 'snapshot';
+  fullTopology: string;        // JSON 字符串
+  description: string;
+  permanent: boolean;
+}
 
-### Hydration 问题防范
+// SSH 配置模板
+interface SshTemplate {
+  id: string;
+  name: string;
+  commands: string[];
+  description?: string;
+}
+```
 
-1. 严禁在 JSX 渲染逻辑中直接使用 typeof window、Date.now()、Math.random() 等动态数据。**必须使用 'use client' 并配合 useEffect + useState 确保动态内容仅在客户端挂载后渲染**；同时严禁非法 HTML 嵌套（如 <p> 嵌套 <div>）。
-2. **禁止使用 head 标签**，优先使用 metadata，详见文档：https://nextjs.org/docs/app/api-reference/functions/generate-metadata
-   1. 三方 CSS、字体等资源可在 `globals.css` 中顶部通过 `@import` 引入或使用 next/font
-   2. preload, preconnect, dns-prefetch 通过 ReactDOM 的 preload、preconnect、dns-prefetch 方法引入
-   3. json-ld 可阅读 https://nextjs.org/docs/app/guides/json-ld
+## 5. 数据库设计 (Dexie.js)
 
-## UI 设计与组件规范 (UI & Styling Standards)
+### 表结构
 
-- 模板默认预装核心组件库 `shadcn/ui`，位于`src/components/ui/`目录下
-- Next.js 项目**必须默认**采用 shadcn/ui 组件、风格和规范，**除非用户指定用其他的组件和规范。**
+```typescript
+// db/indexedDB.ts
+import Dexie, { Table } from 'dexie';
+
+class NetTopoDB extends Dexie {
+  topologies!: Table<Topology>;
+  changes!: Table<ChangeRecord>;
+  snapshots!: Table<Snapshot>;
+  templates!: Table<SshTemplate>;
+  settings!: Table<{ key: string; value: unknown }>;
+
+  constructor() {
+    super('NetTopoHistoryDB');
+    this.version(1).stores({
+      topologies: 'id, lastUpdated',
+      changes: 'id, timestamp, type',
+      snapshots: 'id, timestamp, permanent',
+      templates: 'id, name',
+      settings: 'key'
+    });
+  }
+}
+```
+
+## 6. API 设计
+
+### 6.1 GET /api/network-info
+获取本机网络信息
+```typescript
+// Response
+{
+  localIp: string;
+  subnetMask: string;
+  gateway: string;
+  hostname: string;
+}
+```
+
+### 6.2 POST /api/ping
+Ping 扫描指定 IP 列表
+```typescript
+// Request
+{ ips: string[] }
+
+// Response
+{
+  results: Array<{
+    ip: string;
+    online: boolean;
+    latency: number;  // -1 表示离线
+  }>
+}
+```
+
+### 6.3 POST /api/ssh
+执行 SSH 命令
+```typescript
+// Request
+{
+  host: string;
+  port?: number;
+  username: string;
+  password?: string;
+  privateKey?: string;
+  commands: string[];
+  timeout?: number;  // 默认 10000ms
+}
+
+// Response
+{
+  success: boolean;
+  results: Array<{
+    command: string;
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }>;
+  error?: string;
+}
+```
+
+## 7. 核心组件规范
+
+### 7.1 TopologyCanvas
+- 使用 Cytoscape.js 渲染拓扑图
+- 支持力导向布局 (fcose)
+- 节点颜色: 绿(在线) / 红(离线) / 黄(高延迟>100ms)
+- 拖拽节点后保存位置到 IndexedDB
+- 右键菜单支持添加/删除节点、连接、上传配置
+
+### 7.2 HistoryPanel
+- 侧边栏形式展示变更记录
+- 按时间倒序，支持筛选
+- 支持查看差异详情
+- 支持回滚操作
+
+### 7.3 DiffViewer
+- 三种对比模式: 双图对比、叠加对比、列表对比
+- 使用 jsondiffpatch 计算差异
+- 新增节点绿色高亮，删除红色虚影，修改黄色
+
+### 7.4 SnapshotManager
+- 定时器每 3600000ms (1小时) 保存快照
+- 保留最近 72 个快照
+- 支持标记永久保留
+- 支持手动保存
+
+## 8. 安全约束
+
+### 8.1 SSRF 防护
+- Ping 接口仅允许内网 IP 范围 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+- 拒绝公网 IP 地址
+
+### 8.2 SSH 凭证
+- 密码/私钥仅存内存，不持久化
+- 支持超时控制 (10秒)
+
+## 9. 开发命令
+
+```bash
+# 开发模式
+pnpm dev
+
+# 构建生产版本
+pnpm build
+
+# 启动生产服务
+pnpm start
+
+# 代码检查
+pnpm lint
+pnpm ts-check
+```
+
+## 10. 环境变量
+
+```env
+# 后端配置
+SSH_TIMEOUT=10000        # SSH 超时 ms
+MAX_PING_BATCH=64       # 单次 Ping 最大数量
+PING_SCOPE=192.168.1.0/24  # 扫描范围
+
+# 前端配置
+NEXT_PUBLIC_PING_INTERVAL=30000  # Ping 轮询间隔 ms
+NEXT_PUBLIC_SNAPSHOT_INTERVAL=3600000  # 快照间隔 ms
+```

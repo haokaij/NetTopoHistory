@@ -1,363 +1,228 @@
-# projects
+# NetTopoHistory
 
-这是一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的全栈应用项目，由扣子编程 CLI 创建。
+带变更追踪与定时快照的可编辑动态网络拓扑工具。
+
+## 功能特性
+
+- **网络设备自动发现** - 通过 Ping 扫描自动发现同网段内的在线设备
+- **动态拓扑图展示** - 使用 Cytoscape.js 渲染实时网络拓扑
+- **手动编辑拓扑** - 支持添加/删除节点和连线，拖拽调整布局
+- **配置上传** - 支持通过 SSH 向设备批量执行配置命令
+- **历史变更追踪** - 完整记录所有拓扑变更，支持回滚
+- **定时快照** - 每小时自动保存拓扑快照，保留最近 72 个
+- **拓扑对比** - 支持双图对比、叠加对比和列表对比三种模式
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端框架 | Next.js 16 (App Router) + React 19 + TypeScript |
+| 拓扑图库 | Cytoscape.js |
+| 状态管理 | Zustand |
+| 持久化存储 | Dexie.js (IndexedDB) |
+| Diff 算法 | jsondiffpatch |
+| 后端 Ping | Node.js child_process |
+| SSH 执行 | ssh2 |
+| UI 组件 | shadcn/ui + Tailwind CSS |
 
 ## 快速开始
+
+### 环境要求
+
+- Node.js 18+
+- pnpm 9+
+
+### 安装依赖
+
+```bash
+pnpm install
+```
 
 ### 启动开发服务器
 
 ```bash
-coze dev
+pnpm dev
 ```
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
-
-开发服务器支持热更新，修改代码后页面会自动刷新。
+启动后访问 [http://localhost:5000](http://localhost:5000)
 
 ### 构建生产版本
 
 ```bash
-coze build
+pnpm build
 ```
 
-### 启动生产服务器
+### 启动生产服务
 
 ```bash
-coze start
+pnpm start
 ```
 
-## 项目结构
+## 使用说明
 
-```
-src/
-├── app/                      # Next.js App Router 目录
-│   ├── layout.tsx           # 根布局组件
-│   ├── page.tsx             # 首页
-│   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
-│   └── [route]/             # 其他路由页面
-├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
-├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
-└── hooks/                   # 自定义 React Hooks（可选）
+### 1. 网络扫描
 
-server/
-├── index.ts                 # 自定义服务器入口
-├── tsconfig.json           # Server TypeScript 配置
-└── dist/                    # 编译输出目录（自动生成）
-```
+点击工具栏右侧的「扫描网络」按钮，应用将自动：
 
-## 核心开发规范
+1. 获取本机网络信息（IP、网关）
+2. 扫描 /24 网段内的所有 IP
+3. 在拓扑图中显示在线设备
+4. 自动创建到网关的连线
 
-### 1. 组件开发
+### 2. 手动添加节点
 
-**优先使用 shadcn/ui 基础组件**
+点击工具栏的「+」按钮，输入：
 
-本项目已预装完整的 shadcn/ui 组件库，位于 `src/components/ui/` 目录。开发时应优先使用这些组件作为基础：
+- **IP 地址**（必填）
+- **主机名**（可选）
+- **描述**（可选）
 
-```tsx
-// ✅ 推荐：使用 shadcn 基础组件
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+### 3. 编辑拓扑
 
-export default function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>标题</CardHeader>
-      <CardContent>
-        <Input placeholder="输入内容" />
-        <Button>提交</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
+- **拖拽节点** - 调整位置
+- **点击节点** - 查看详情
+- **右键节点** - 上下文菜单
+- **Delete 键** - 删除选中元素
 
-**可用的 shadcn 组件清单**
+### 4. 上传配置
 
-- 表单：`button`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `slider`
-- 布局：`card`, `separator`, `tabs`, `accordion`, `collapsible`, `scroll-area`
-- 反馈：`alert`, `alert-dialog`, `dialog`, `toast`, `sonner`, `progress`
-- 导航：`dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`
-- 数据展示：`table`, `avatar`, `badge`, `hover-card`, `tooltip`, `popover`
-- 其他：`calendar`, `command`, `carousel`, `resizable`, `sidebar`
+1. 点击选中节点
+2. 切换到「操作」标签
+3. 点击「上传配置」
+4. 输入 SSH 凭证和命令
 
-详见 `src/components/ui/` 目录下的具体组件实现。
+### 5. 历史记录
 
-### 2. 路由开发
+- 点击右上角「历史」按钮打开面板
+- 支持按类型筛选、搜索
+- 点击回滚按钮恢复历史版本
 
-Next.js 使用文件系统路由，在 `src/app/` 目录下创建文件夹即可添加路由：
+### 6. 快照管理
+
+- 每小时自动保存一次快照
+- 点击工具栏「设置」按钮可手动保存
+- 快照可标记为「永久保留」
+
+## API 接口
+
+### GET /api/network-info
+
+获取本机网络信息。
 
 ```bash
-# 创建新路由 /about
-src/app/about/page.tsx
-
-# 创建动态路由 /posts/[id]
-src/app/posts/[id]/page.tsx
-
-# 创建路由组（不影响 URL）
-src/app/(marketing)/about/page.tsx
-
-# 创建 API 路由
-src/app/api/users/route.ts
+curl http://localhost:5000/api/network-info
 ```
 
-**页面组件示例**
-
-```tsx
-// src/app/about/page.tsx
-import { Button } from '@/components/ui/button';
-
-export const metadata = {
-  title: '关于我们',
-  description: '关于页面描述',
-};
-
-export default function AboutPage() {
-  return (
-    <div>
-      <h1>关于我们</h1>
-      <Button>了解更多</Button>
-    </div>
-  );
+响应示例：
+```json
+{
+  "localIp": "192.168.1.100",
+  "subnetMask": "255.255.255.0",
+  "gateway": "192.168.1.1",
+  "hostname": "my-computer"
 }
 ```
 
-**动态路由示例**
+### POST /api/ping
 
-```tsx
-// src/app/posts/[id]/page.tsx
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return <div>文章 ID: {id}</div>;
-}
-```
-
-**API 路由示例**
-
-```tsx
-// src/app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({ users: [] });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. 依赖管理
-
-**必须使用 pnpm 管理依赖**
+对指定 IP 列表执行 Ping 探测。
 
 ```bash
-# ✅ 安装依赖
-pnpm install
-
-# ✅ 添加新依赖
-pnpm add package-name
-
-# ✅ 添加开发依赖
-pnpm add -D package-name
-
-# ❌ 禁止使用 npm 或 yarn
-# npm install  # 错误！
-# yarn add     # 错误！
+curl -X POST http://localhost:5000/api/ping \
+  -H "Content-Type: application/json" \
+  -d '{"ips": ["192.168.1.1", "192.168.1.100", "192.168.1.200"]}'
 ```
 
-项目已配置 `preinstall` 脚本，使用其他包管理器会报错。
-
-### 4. 样式开发
-
-**使用 Tailwind CSS v4**
-
-本项目使用 Tailwind CSS v4 进行样式开发，并已配置 shadcn 主题变量。
-
-```tsx
-// 使用 Tailwind 类名
-<div className="flex items-center gap-4 p-4 rounded-lg bg-background">
-  <Button className="bg-primary text-primary-foreground">
-    主要按钮
-  </Button>
-</div>
-
-// 使用 cn() 工具函数合并类名
-import { cn } from '@/lib/utils';
-
-<div className={cn(
-  "base-class",
-  condition && "conditional-class",
-  className
-)}>
-  内容
-</div>
-```
-
-**主题变量**
-
-主题变量定义在 `src/app/globals.css` 中，支持亮色/暗色模式：
-
-- `--background`, `--foreground`
-- `--primary`, `--primary-foreground`
-- `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`
-- `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`
-- `--border`, `--input`, `--ring`
-
-### 5. 表单开发
-
-推荐使用 `react-hook-form` + `zod` 进行表单开发：
-
-```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-const formSchema = z.object({
-  username: z.string().min(2, '用户名至少 2 个字符'),
-  email: z.string().email('请输入有效的邮箱'),
-});
-
-export default function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: '', email: '' },
-  });
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Input {...form.register('username')} />
-      <Input {...form.register('email')} />
-      <Button type="submit">提交</Button>
-    </form>
-  );
+响应示例：
+```json
+{
+  "results": [
+    {"ip": "192.168.1.1", "online": true, "latency": 2.5},
+    {"ip": "192.168.1.100", "online": true, "latency": 5.1},
+    {"ip": "192.168.1.200", "online": false, "latency": -1}
+  ]
 }
 ```
 
-### 6. 数据获取
+### POST /api/ssh
 
-**服务端组件（推荐）**
+在远程设备上执行 SSH 命令。
 
-```tsx
-// src/app/posts/page.tsx
-async function getPosts() {
-  const res = await fetch('https://api.example.com/posts', {
-    cache: 'no-store', // 或 'force-cache'
-  });
-  return res.json();
-}
+```bash
+curl -X POST http://localhost:5000/api/ssh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "host": "192.168.1.1",
+    "username": "admin",
+    "password": "password",
+    "commands": ["display version", "display interface"],
+    "timeout": 10000
+  }'
+```
 
-export default async function PostsPage() {
-  const posts = await getPosts();
-
-  return (
-    <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
-    </div>
-  );
+响应示例：
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "command": "display version",
+      "stdout": "Version 5.20 ...",
+      "stderr": "",
+      "exitCode": 0
+    }
+  ]
 }
 ```
 
-**客户端组件**
+## Docker 部署
 
-```tsx
-'use client';
+### 构建镜像
 
-import { useEffect, useState } from 'react';
-
-export default function ClientComponent() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(setData);
-  }, []);
-
-  return <div>{JSON.stringify(data)}</div>;
-}
+```bash
+docker build -t nettopohistory .
 ```
 
-## 常见开发场景
+### 使用 Docker Compose 启动
 
-### 添加新页面
-
-1. 在 `src/app/` 下创建文件夹和 `page.tsx`
-2. 使用 shadcn 组件构建 UI
-3. 根据需要添加 `layout.tsx` 和 `loading.tsx`
-
-### 创建业务组件
-
-1. 在 `src/components/` 下创建组件文件（非 UI 组件）
-2. 优先组合使用 `src/components/ui/` 中的基础组件
-3. 使用 TypeScript 定义 Props 类型
-
-### 添加全局状态
-
-推荐使用 React Context 或 Zustand：
-
-```tsx
-// src/lib/store.ts
-import { create } from 'zustand';
-
-interface Store {
-  count: number;
-  increment: () => void;
-}
-
-export const useStore = create<Store>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
+```bash
+docker-compose up -d
 ```
 
-### 集成数据库
+访问 [http://localhost:5000](http://localhost:5000)
 
-推荐使用 Prisma 或 Drizzle ORM，在 `src/lib/db.ts` 中配置。
+### 环境变量
 
-## 技术栈
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| NODE_ENV | 运行环境 | production |
+| PORT | 服务端口 | 5000 |
+| SSH_TIMEOUT | SSH 超时时间 (ms) | 10000 |
+| MAX_PING_BATCH | Ping 批量大小 | 64 |
 
-- **框架**: Next.js 16.1.1 (App Router)
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS v4
-- **表单**: React Hook Form + Zod
-- **图标**: Lucide React
-- **字体**: Geist Sans & Geist Mono
-- **包管理器**: pnpm 9+
-- **TypeScript**: 5.x
+## 安全说明
 
-## 参考文档
+1. **内网限制** - Ping 和 SSH 接口仅允许内网 IP 访问
+2. **凭证不持久化** - SSH 密码/私钥仅存内存，不写入存储
+3. **超时保护** - SSH 执行默认 10 秒超时
 
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com)
+## 浏览器兼容性
 
-## 重要提示
+- Chrome 90+
+- Firefox 90+
+- Edge 90+
+- Safari 14+
 
-1. **必须使用 pnpm** 作为包管理器
-2. **优先使用 shadcn/ui 组件** 而不是从零开发基础组件
-3. **遵循 Next.js App Router 规范**，正确区分服务端/客户端组件
-4. **使用 TypeScript** 进行类型安全开发
-5. **使用 `@/` 路径别名** 导入模块（已配置）
+## 数据存储
+
+| 数据类型 | 存储位置 | 说明 |
+|----------|----------|------|
+| 拓扑结构 | IndexedDB | 浏览器本地存储 |
+| 历史记录 | IndexedDB | 变更追踪 |
+| 快照 | IndexedDB | 最近 72 个 |
+| SSH 模板 | IndexedDB | 用户配置 |
+| SSH 凭证 | 内存 | 不持久化 |
+
+## 许可证
+
+MIT License

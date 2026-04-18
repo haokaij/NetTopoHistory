@@ -1,0 +1,43 @@
+# ============================================================
+# Docker Compose - NetTopoHistory 一键部署
+# ============================================================
+
+version: '3.8'
+
+services:
+  # NetTopoHistory 应用
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nettopohistory-app
+    ports:
+      - "5000:5000"
+    environment:
+      # 应用配置
+      - NODE_ENV=production
+      - PORT=5000
+      # SSH 超时时间 (ms)
+      - SSH_TIMEOUT=10000
+      # 最大 Ping 批量数
+      - MAX_PING_BATCH=64
+      # Ping 扫描间隔 (ms)
+      - NEXT_PUBLIC_PING_INTERVAL=30000
+      # 快照保存间隔 (ms) - 1小时
+      - NEXT_PUBLIC_SNAPSHOT_INTERVAL=3600000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - nettopohistory-network
+    volumes:
+      # 持久化 IndexedDB 数据 (浏览器存储，不在容器内)
+      - ./data:/app/data:ro
+
+networks:
+  nettopohistory-network:
+    driver: bridge
