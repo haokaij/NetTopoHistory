@@ -7,8 +7,11 @@ const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// 是否为开发模式
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+// 是否为开发模式（通过命令行参数 --dev 启用）
+const isDev = process.argv.includes('--dev') || process.argv.includes('--development');
+
+// 是否为生产模式
+const isProd = !isDev;
 
 // 存储窗口实例
 let mainWindow = null;
