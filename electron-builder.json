@@ -21,7 +21,6 @@
         "arch": ["x64"]
       }
     ],
-    "icon": "electron/build/icon.ico",
     "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "nsis": {
@@ -29,9 +28,6 @@
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false,
-    "installerIcon": "electron/build/icon.ico",
-    "uninstallerIcon": "electron/build/icon.ico",
-    "installerHeaderIcon": "electron/build/icon.ico",
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "NetTopoHistory"
