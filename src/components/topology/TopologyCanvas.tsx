@@ -187,7 +187,6 @@ export default function TopologyCanvas({
         style: CY_STYLESHEET as any,
         minZoom: 0.2,
         maxZoom: 3,
-        wheelSensitivity: 0.3,
         boxSelectionEnabled: true
       });
 
