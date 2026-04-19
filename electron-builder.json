@@ -17,20 +17,14 @@
   "win": {
     "target": [
       {
-        "target": "nsis",
+        "target": "portable",
         "arch": ["x64"]
       }
     ],
     "artifactName": "${productName}-Setup-${version}.${ext}"
   },
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false,
-    "createDesktopShortcut": true,
-    "createStartMenuShortcut": true,
-    "shortcutName": "NetTopoHistory"
+  "portable": {
+    "artifactName": "${productName}-Portable-${version}.${ext}"
   },
   "publish": null,
   "asar": true,
