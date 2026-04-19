@@ -1,6 +1,8 @@
 {
   "name": "nettopohistory",
   "version": "0.1.0",
+  "description": "NetTopoHistory - Network Topology Tool with Change Tracking and Snapshots",
+  "author": "NetTopoHistory Team",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
